@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>心動大富翁</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+/* 版面概念：燭光約會夜 —— 深酒紅桌面上攤開一張粉霧色的棋盤，右側是「事件卡」與玩家席 */
+:root{
+  --bg:#1c0c15; --surface:#2a1420; --surface2:#3a1d2d; --line:rgba(255,220,235,.12);
+  --card:#fff3f1; --ink:#3a1726; --fg:#fbe9ef; --muted:#c6a0b0;
+  --accent:#ef5d85; --accent-ink:#fff; --gold:#f4c46c;
+  --f-display:"LXGW WenKai TC","Noto Serif TC","Kaiti TC",serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:dark;
+}
+body[data-mode="friend"]{ --accent:#36bfa9; --gold:#ffb46b; }
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:radial-gradient(1200px 600px at 70% -10%,#3b1427 0%,transparent 60%),var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px}
+body[data-mode="friend"]{background:radial-gradient(1200px 600px at 70% -10%,#123a37 0%,transparent 60%),#0f1a1c}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+[hidden]{display:none!important}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+.wrap{max-width:1080px;margin:0 auto}
+
+/* buttons */
+.btn{border:1px solid var(--line);background:var(--surface2);padding:.6em 1.1em;border-radius:12px;transition:transform .1s,background .2s}
+.btn:hover{background:#4a2639}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);border-color:transparent;color:var(--accent-ink);font-weight:700}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.big{font-size:1.15em;padding:.75em 1.4em;width:100%}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input[type=text],textarea,select{background:#170a11;border:1px solid var(--line);border-radius:10px;padding:.6em .8em;width:100%}
+body[data-mode="friend"] input[type=text],body[data-mode="friend"] textarea,body[data-mode="friend"] select{background:#0b1416}
+textarea{resize:vertical;min-height:70px}
+label.lb{font-size:.82em;color:var(--muted);letter-spacing:.06em}
+
+/* top bar */
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.brand{font-family:var(--f-display);font-size:1.5em;font-weight:700;display:flex;align-items:center;gap:.4em}
+.brand .heart{color:var(--accent)}
+.chip{background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:.25em .8em;font-size:.85em}
+.chip b{color:var(--gold);letter-spacing:.15em}
+
+/* home */
+.hero{text-align:center;padding:28px 0 18px}
+.hero h1{font-size:clamp(2.4em,7vw,4em);line-height:1.1}
+.hero h1 span{color:var(--accent)}
+.hero p{color:var(--muted);margin:.6em 0 0}
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:18px 0}
+.mode{border:2px solid var(--line);background:var(--surface);border-radius:18px;padding:18px;text-align:left;display:flex;flex-direction:column;gap:6px}
+.mode .mi{font-size:2em}
+.mode h3{font-size:1.35em}
+.mode p{margin:0;color:var(--muted);font-size:.92em}
+.mode.sel{border-color:var(--accent);background:var(--surface2)}
+.mode.sel h3{color:var(--accent)}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.ways{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.ways h3{font-size:1.15em}
+.ways p{margin:0;color:var(--muted);font-size:.88em}
+details{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-top:14px}
+details summary{cursor:pointer;font-weight:700}
+details li{margin:.25em 0;color:var(--muted)}
+details b{color:var(--fg)}
+
+/* lobby */
+.code-big{font-family:var(--f-display);font-size:3em;letter-spacing:.25em;color:var(--gold);text-align:center;line-height:1.2}
+.seats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.seat{background:var(--surface2);border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:10px;border:1px solid var(--line);min-width:0}
+.seat.empty{opacity:.5;border-style:dashed}
+.seat .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pair-label{font-size:.8em;color:var(--muted);letter-spacing:.08em;grid-column:1/-1;margin-top:4px}
+.mini{padding:.2em .55em;border-radius:8px;font-size:.85em}
+
+/* game */
+.game{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px);gap:18px;align-items:start}
+@media (max-width:900px){.game{grid-template-columns:minmax(0,1fr)}}
+.board-wrap{position:relative;width:100%;max-width:640px;margin:0 auto}
+.board{position:relative;aspect-ratio:1;width:100%;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(7,1fr);gap:3px;background:var(--surface);padding:6px;border-radius:20px;border:1px solid var(--line)}
+.tile{background:var(--card);color:var(--ink);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;position:relative;font-size:clamp(8.5px,1.55vw,12.5px);line-height:1.15;padding:2px;border-top:5px solid transparent}
+.tile .ti{font-size:1.6em;line-height:1.1}
+.tile .tn{font-weight:700;white-space:nowrap}
+.tile .tp{font-size:.88em;opacity:.7;font-variant-numeric:tabular-nums}
+.tile.corner{background:#ffe1e8}
+body[data-mode="friend"] .tile.corner{background:#d9f5ef}
+.tile.t-truth{background:#ffd9e2}.tile.t-sync{background:#e6dcff}.tile.t-chance{background:#ffefc7}.tile.t-task{background:#ffe2cc}
+.tile.owned::after{content:"";position:absolute;inset:0;border:3px solid var(--oc);border-radius:8px;pointer-events:none}
+.tile .own{position:absolute;right:2px;bottom:2px;width:.9em;height:.9em;border-radius:50%;background:var(--oc)}
+.center{grid-area:2/2/7/7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;border-radius:14px;background:linear-gradient(160deg,rgba(255,255,255,.04),rgba(255,255,255,0));}
+.center .logo{font-family:var(--f-display);font-size:clamp(1.3em,4.2vw,2.3em);font-weight:700}
+.center .logo span{color:var(--accent)}
+.center .sub{color:var(--muted);font-size:clamp(.75em,1.8vw,.95em)}
+.dice{font-size:clamp(3em,10vw,5.2em);line-height:1;color:var(--gold);margin:4px 0}
+.dice.rolling{animation:shake .12s linear infinite}
+@keyframes shake{0%{transform:rotate(-12deg)}50%{transform:rotate(12deg)}100%{transform:rotate(-12deg)}}
+.rinfo{font-size:clamp(.75em,1.8vw,.95em);color:var(--muted);font-variant-numeric:tabular-nums}
+.token{position:absolute;border-radius:50%;border:2px solid #fff;display:grid;place-items:center;color:#fff;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.45);transition:left .16s ease,top .16s ease;z-index:5;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.token.cur{animation:bob 1s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-4px)}}
+
+.side{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;min-width:0}
+.teams{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.teams div{background:var(--surface2);border-radius:10px;padding:6px 10px;font-size:.88em;color:var(--muted)}
+.teams b{color:var(--gold);font-size:1.25em;font-variant-numeric:tabular-nums;margin-left:4px}
+.pl{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:12px;border:1px solid transparent}
+.pl.cur{border-color:var(--pc);background:rgba(255,255,255,.04)}
+.pl .dot{width:30px;height:30px;border-radius:50%;background:var(--pc);display:grid;place-items:center;font-weight:700;color:#fff;flex:none}
+.pinfo{flex:1;min-width:0}
+.pn{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pn small{font-weight:400;color:var(--muted)}
+.tag{background:var(--surface2);border-radius:6px;padding:0 .4em;margin-left:.4em;font-size:.75em}
+.ps{font-size:.8em;color:var(--muted)}
+.money{font-variant-numeric:tabular-nums;font-weight:700;font-size:1.15em;color:var(--gold)}
+.money small{font-size:.7em}
+
+.ev{display:flex;flex-direction:column;gap:12px}
+.ev.enter{animation:pop .45s ease .55s both}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98)}}
+.ev-tag{font-size:.8em;letter-spacing:.1em;color:var(--accent);font-weight:700}
+.ev h3{font-size:1.35em;line-height:1.4}
+.ev p{margin:0;color:var(--fg)}
+.ev .icon{font-size:2.2em;line-height:1}
+.wait{color:var(--muted);font-size:.92em}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opts .btn{text-align:left}
+.ans-list{display:flex;flex-direction:column;gap:6px}
+.ans{display:flex;gap:8px;align-items:center;background:var(--surface2);border-radius:10px;padding:6px 10px;font-size:.92em}
+.ans .who{font-weight:700;color:var(--pc);flex:none}
+.ans .ok{margin-left:auto;flex:none}
+.curtain{background:var(--surface2);border:1px dashed var(--accent);border-radius:14px;padding:14px;text-align:center;display:flex;flex-direction:column;gap:10px}
+.quote{border-left:3px solid var(--accent);padding:.3em .8em;background:rgba(255,255,255,.04);border-radius:0 10px 10px 0;white-space:pre-wrap;word-break:break-word}
+.reacts{display:flex;gap:6px;flex-wrap:wrap}
+.reacts .btn{padding:.25em .6em;font-size:1.1em}
+.rchips{display:flex;gap:6px;flex-wrap:wrap}
+.rchip{background:var(--surface2);border-radius:999px;padding:.1em .6em;font-size:.85em}
+.result{background:rgba(244,196,108,.1);border:1px solid rgba(244,196,108,.35);border-radius:12px;padding:8px 12px;font-size:.92em}
+.log{max-height:180px;overflow:auto;font-size:.85em;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.panel h2{font-size:1.05em;margin-bottom:8px;color:var(--muted);font-family:var(--f-body);letter-spacing:.08em}
+
+/* over */
+.over{position:fixed;inset:0;background:rgba(10,4,8,.85);z-index:50;overflow:auto;padding:24px max(16px,env(safe-area-inset-left,0px)) 40px max(16px,env(safe-area-inset-right,0px))}
+.over-inner{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.over h2{font-size:2.2em;text-align:center}
+.rank{display:flex;flex-direction:column;gap:8px}
+.rank .r{display:flex;gap:12px;align-items:center;background:var(--surface);border-radius:14px;padding:10px 14px}
+.rank .r .n{font-family:var(--f-display);font-size:1.6em;color:var(--gold);width:1.4em}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.note{background:var(--card);color:var(--ink);border-radius:16px;padding:14px 16px;border-top:6px solid var(--pc);min-width:0}
+.note h3{font-size:1.3em;margin-bottom:6px}
+.note dl{margin:0}
+.note dt{font-size:.82em;color:#8a5a6c;margin-top:8px}
+.note dd{margin:0;font-weight:500;word-break:break-word;white-space:pre-wrap}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#000c;color:#fff;padding:.6em 1.1em;border-radius:12px;z-index:99;max-width:90vw}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body data-mode="couple">
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><span class="heart">♥</span>心動大富翁</div>
+    <div class="row">
+      <span class="chip" id="roomChip" hidden>房間 <b id="roomCode"></b></span>
+      <span class="chip" id="netChip" hidden></span>
+      <button class="btn ghost mini" id="leaveBtn" hidden>離開</button>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <section id="home">
+    <div class="hero">
+      <h1>走一圈，<span>更懂彼此</span>一點</h1>
+      <p>四個人的愛情大富翁：擲骰子、買下回憶地點、說真心話、考默契。</p>
+    </div>
+    <div class="modes">
+      <button class="mode sel" data-mode="couple" id="mCouple">
+        <span class="mi">💑</span><h3>兩對情侶版</h3>
+        <p>兩對情侶同場。默契考驗四人同時作答，看哪一對最心有靈犀；真心話多半是說給另一半聽的。</p>
+      </button>
+      <button class="mode" data-mode="friend" id="mFriend">
+        <span class="mi">🥂</span><h3>朋友版</h3>
+        <p>2–4 位朋友。聊愛情觀與兩性話題，「猜猜我」讓大家猜你的真實答案，看誰最懂你。</p>
+      </button>
+    </div>
+    <div class="box" style="margin-bottom:14px">
+      <label class="lb" for="myName">你的暱稱</label>
+      <input type="text" id="myName" maxlength="12" placeholder="例如：小美">
+    </div>
+    <div class="ways">
+      <div class="box">
+        <h3>🏠 建立連線房間</h3>
+        <p>你當房主，拿到房間代碼後傳給其他三個人，各自用手機或電腦加入。</p>
+        <button class="btn primary" id="hostBtn">建立房間</button>
+      </div>
+      <div class="box">
+        <h3>🔑 加入房間</h3>
+        <p>輸入房主給你的 4 碼代碼。版本由房主決定。</p>
+        <input type="text" id="joinCode" maxlength="4" placeholder="例如：K7QM" style="text-transform:uppercase;letter-spacing:.2em">
+        <button class="btn primary" id="joinBtn">加入</button>
+      </div>
+      <div class="box">
+        <h3>📱 同一台裝置</h3>
+        <p>大家圍著同一台平板或電腦輪流玩，需要秘密作答時會提示其他人別偷看。</p>
+        <button class="btn" id="localBtn">設定玩家</button>
+      </div>
+    </div>
+    <div class="box" id="localSetup" hidden style="margin-top:14px">
+      <h3>同一台裝置：輸入玩家</h3>
+      <p class="wait" id="localHint">情侶版：1、2 號是一對，3、4 號是一對。</p>
+      <div class="seats">
+        <input type="text" id="ln0" maxlength="12" placeholder="玩家 1">
+        <input type="text" id="ln1" maxlength="12" placeholder="玩家 2">
+        <input type="text" id="ln2" maxlength="12" placeholder="玩家 3">
+        <input type="text" id="ln3" maxlength="12" placeholder="玩家 4">
+      </div>
+      <div class="row">
+        <label class="lb" for="localRounds">回合數</label>
+        <select id="localRounds" style="width:auto"><option>6</option><option selected>8</option><option>10</option><option>12</option></select>
+        <button class="btn primary" id="localStart">開始遊戲</button>
+      </div>
+    </div>
+    <details>
+      <summary>玩法說明</summary>
+      <ul>
+        <li>每人起始 <b>300 💗 愛心幣</b>，輪流擲骰子在 24 格的棋盤上前進，經過起點 +50。</li>
+        <li><b>地點格</b>：可以買下，變成你的「回憶地點」。別人停下要付過路費，地主可以順便問對方一個問題。情侶版停在另一半的地點不用付錢，兩人各 +15。</li>
+        <li><b>💬 真心話</b>：回答問題 +15，想跳過要付 10。答案可以記下來，會收進最後的「認識筆記」。</li>
+        <li><b>🎯 默契考驗 / 猜猜我</b>：情侶版四人同時秘密作答，與另一半選一樣的各 +25。朋友版由停下的人說出自己的答案，其他人猜，猜中的人 +20、被猜中的人每次 +10。</li>
+        <li><b>💌 任務</b>：當場完成一個小互動，其他人按「通過」後 +20。</li>
+        <li><b>💝 廣場</b>：選一位玩家，當面說一件你感謝對方的事，兩人各 +15。</li>
+        <li><b>⚡ 吵架了</b>：直接送進 🧊 冷戰區，下一回合暫停。</li>
+        <li>回合結束時，總資產（愛心幣＋地點價值）最高的人獲勝；情侶版比的是兩人合計。最後會產生每個人的<b>認識筆記</b>。</li>
+      </ul>
+    </details>
+  </section>
+
+  <!-- LOBBY -->
+  <section id="lobby" hidden>
+    <div class="box" style="margin-bottom:14px;text-align:center">
+      <div class="lb">房間代碼</div>
+      <div class="code-big" id="lbCode"></div>
+      <div class="row" style="justify-content:center"><button class="btn" id="copyInvite">複製邀請文字</button></div>
+      <p class="wait" id="lbStatus"></p>
+    </div>
+    <div class="modes" id="lbModes"></div>
+    <div class="box">
+      <div class="row" style="justify-content:space-between">
+        <h3>玩家席</h3>
+        <div class="row" id="lbRoundsWrap"><label class="lb" for="lbRounds">回合數</label>
+          <select id="lbRounds" style="width:auto"><option>6</option><option>8</option><option>10</option><option>12</option></select></div>
+      </div>
+      <div class="seats" id="lbSeats"></div>
+      <button class="btn primary big" id="lbStart">開始遊戲</button>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="game" hidden>
+    <div class="game">
+      <div class="board-wrap"><div class="board" id="board"></div></div>
+      <div class="side">
+        <div class="panel" id="players"></div>
+        <div class="panel"><div class="ev" id="ev"></div></div>
+        <div class="panel"><h2>動態</h2><div class="log" id="log"></div></div>
+      </div>
+    </div>
+    <div class="over" id="over" hidden></div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ================== 資料 ================== */
+const COLORS=['#ff5f8a','#ffa63d','#3fb8ea','#9b7cff'];
+const GROUP=['#ff8fab','#ffb86b','#f2d15c','#7fd39a','#6fc0f0','#b39bff'];
+const START_MONEY=300, PASS_BONUS=50;
+const PRICES=[60,60,80,80,100,100,120,120,140,140,160,180];
+const LAYOUT=['start','p','truth','p','sync','p','jail','p','chance','p','task','p','plaza','p','sync','p','truth','p','gojail','p','chance','p','sync','p'];
+
+const DATA={
+couple:{
+  label:'兩對情侶版',
+  names:{truth:'真心話',sync:'默契考驗',chance:'愛情命運',task:'甜蜜任務',plaza:'心動廣場'},
+  props:[['☕','咖啡廳'],['📚','書店'],['🎬','電影院'],['🍢','夜市'],['🌿','河濱公園'],['🎢','遊樂園'],['🎡','摩天輪'],['🏖️','海邊'],['♨️','溫泉旅館'],['⛺','星空露營'],['🍷','夢幻餐廳'],['💍','婚紗街']],
+  truth:[
+    '你第一次對另一半心動，是在什麼時刻？',
+    '交往到現在，對方做過最讓你感動的一件小事是什麼？',
+    '你覺得自己在這段關係裡，最想改進的一個地方是什麼？',
+    '吵架的時候，你最希望對方怎麼做，你會比較快消氣？',
+    '如果可以重來第一次約會，你想改變什麼？',
+    '你最喜歡另一半身上的哪個小習慣？',
+    '有什麼話你一直想跟對方說，卻還沒說出口？',
+    '你想像中五年後的你們，過著什麼樣的生活？',
+    '對方做什麼事，最讓你覺得「被愛」？',
+    '在這段關係裡，你最害怕失去的是什麼？',
+    '你最想和另一半一起完成的夢想清單是哪一項？',
+    '交往之後，你覺得自己變得更好的地方是什麼？',
+    '有沒有一件事你其實很在意，卻假裝不在意？',
+    '你心中「浪漫」的定義是什麼？',
+    '關於錢，你理想的情侶相處模式是什麼？',
+    '對方說過的哪一句話，讓你到現在還記得？',
+    '你需要多少「自己的時間」？希望對方怎麼配合？',
+    '你覺得另一對情侶身上，有什麼值得你們學習的地方？',
+    '說出另一半的三個優點，越具體越好。',
+    '你們一起度過最難的一次是什麼？後來怎麼走過來的？',
+    '另一半心情不好的時候，你通常怎麼察覺？',
+    '你們第一次說「我愛你」是在什麼情況？',
+    '有什麼事你希望對方「不用問，就主動做」？',
+    '想對另一對情侶問一個關於他們感情的問題嗎？現在問！'
+  ],
+  sync:[
+    ['理想的週末約會是？',['窩在家追劇','出門吃美食','戶外踏青爬山','說走就走的小旅行']],
+    ['吵架之後，你希望？',['馬上講清楚','先各自冷靜','一個擁抱就好','等對方先開口']],
+    ['最能讓你感受到愛的是？',['肯定的話語','專心陪伴的時間','用心的禮物','實際的幫忙']],
+    ['紀念日最想怎麼過？',['浪漫晚餐','一趟旅行','在家簡單過','收到手作禮物']],
+    ['以後最想住在哪裡？',['熱鬧的城市','安靜的郊區','靠海的小鎮','國外']],
+    ['兩人的錢怎麼管？',['開共同帳戶','各管各的','按比例分攤','交給一個人管']],
+    ['你生氣時最像？',['火山爆發','冰山沉默','碎碎念','假裝沒事']],
+    ['重要時刻（例如求婚）你喜歡？',['盛大的驚喜','只有兩個人','旅行途中','平凡日常裡']],
+    ['你的旅行風格？',['行程排滿','隨興亂走','住好飯店放空','跟團最輕鬆']],
+    ['生日最想收到？',['實用的東西','驚喜派對','一趟旅行','親手寫的卡片']],
+    ['最想一起養？',['貓','狗','植物','先養好自己']],
+    ['今晚晚餐吃什麼？',['火鍋','日式料理','夜市小吃','自己下廚']],
+    ['手機密碼要不要互相知道？',['要，沒什麼好藏','各自保有','想看再問','無所謂']],
+    ['另一半和異性朋友單獨吃飯？',['完全 OK','事先說一聲就好','有點介意','不太能接受']],
+    ['家事怎麼分工？',['平均分配','誰擅長誰做','一起做','花錢請人做']]
+  ],
+  task:[
+    '看著另一半的眼睛 10 秒，誰先笑誰輸。',
+    '用三個詞形容你們的關係，並解釋為什麼。',
+    '模仿另一半撒嬌的樣子。',
+    '給另一半一個 10 秒的擁抱。',
+    '找出另一半今天穿著的一個細節，好好稱讚它。',
+    '用一句話，向另一對情侶推薦你的另一半。',
+    '幫另一半按摩肩膀 30 秒。',
+    '和另一半比出一個只有你們懂的手勢或暗號。',
+    '重現你們第一次見面時說的第一句話（記不清就即興）。',
+    '對另一半說一句從沒說過的情話。',
+    '兩人一起用手比一個愛心，請另一對幫你們拍照。',
+    '承諾一件這個月要為對方做的小事，並說出口。'
+  ],
+  chance:[
+    {t:'收到另一半的早安訊息，心頭一暖。',d:30},
+    {t:'一起存到旅遊基金了！',d:50},
+    {t:'差點忘記紀念日…趕快補救。',d:-40},
+    {t:'前任突然按讚你的動態，氣氛有點微妙。',d:-20},
+    {t:'朋友說你們好登對。',d:20},
+    {t:'為了小事吵起來，前往冷戰區冷靜一下。',j:1},
+    {t:'驚喜約會成功！前進 3 格。',m:3},
+    {t:'一起看了日出，感情升溫。',d:30},
+    {t:'手機滑太久被抱怨了。',d:-15},
+    {t:'訂到夢幻餐廳，荷包大失血但很值得。',d:-30},
+    {t:'交換了手寫小卡。',d:25},
+    {t:'約會路上迷路還吵嘴，後退 2 格。',m:-2}
+  ]
+},
+friend:{
+  label:'朋友版',
+  names:{truth:'真心話',sync:'猜猜我',chance:'緣分卡',task:'友情任務',plaza:'友情廣場'},
+  props:[['🧋','手搖飲店'],['🎲','桌遊店'],['🎬','電影院'],['🍢','夜市'],['🍻','熱炒店'],['🎤','KTV'],['🥩','燒肉店'],['🔐','密室逃脫'],['🏖️','海邊'],['🍸','酒吧'],['⛺','露營區'],['🎸','演唱會']],
+  truth:[
+    '你覺得男女之間有純友誼嗎？為什麼？',
+    '你的理想型有哪三個條件？哪一個絕對不能妥協？',
+    '你最久的一段感情（或暗戀）讓你學到了什麼？',
+    '在感情裡，你覺得「相愛」和「適合」哪個比較重要？',
+    '對方做了什麼事，會讓你瞬間扣分？',
+    '告白應該由誰主動？你會主動嗎？',
+    '你心中最浪漫的一件事是什麼？',
+    '在場的朋友中，你覺得誰最可能先結婚？為什麼？',
+    '你覺得自己談戀愛時最大的缺點是什麼？',
+    '你能接受遠距離戀愛嗎？',
+    '你做過最瘋狂的一件「為愛付出」的事？',
+    '你覺得好的分手應該是什麼樣子？',
+    '你最欣賞在場哪位朋友的戀愛觀？',
+    '第一次約會，誰該付錢？',
+    '交往之前，你覺得最該先確認的一件事是什麼？',
+    '曖昧的時候，你最受不了對方做什麼？',
+    '你曾經被誤會成什麼樣的人？其實你是怎樣的？',
+    '你最近一次覺得孤單是什麼時候？',
+    '婚姻對你來說是必需的嗎？',
+    '你覺得好朋友和好伴侶有什麼共同點？',
+    '如果朋友的另一半對他不好，你會直接說嗎？',
+    '「對不起」、「謝謝」、「我需要你」，哪一句你最難說出口？',
+    '說出在場每個人身上一個你很欣賞的地方。',
+    '在感情中，你比較像付出的一方還是接受的一方？'
+  ],
+  sync:[
+    ['理想的第一次約會？',['咖啡廳聊天','看電影','一起運動','逛夜市']],
+    ['曖昧時你最在意？',['回訊息的速度','有沒有主動約','聊不聊得來','外表打扮']],
+    ['談戀愛時你屬於？',['黏人型','獨立型','照顧人型','被照顧型']],
+    ['分手後你會？',['大哭一場','瘋狂工作或運動','找朋友喝一杯','刪光所有照片']],
+    ['最無法接受另一半？',['說謊','不上進','太黏人','不尊重我的朋友']],
+    ['你會怎麼告白？',['當面直說','寫信或傳訊息','請朋友幫忙','等對方先說']],
+    ['你的戀愛節奏？',['一見鍾情','慢慢培養','先當朋友','看緣分']],
+    ['第一眼最吸引你的是？',['笑容','眼神','穿搭','聲音']],
+    ['理想的週末？',['宅在家','出門聚餐','戶外活動','一個人充電']],
+    ['吵架時你通常？',['講道理','先冷靜','先道歉','生悶氣']],
+    ['交往多久可以見家長？',['三個月內','半年左右','一年以上','確定要結婚才見']],
+    ['收到最開心的禮物？',['手寫卡片','實用的東西','一段體驗','驚喜小物']],
+    ['在朋友圈裡你通常是？',['開心果','傾聽者','規劃者','跟著大家走']],
+    ['你覺得最有魅力的特質？',['自信','幽默','溫柔','聰明']],
+    ['理想的另一半年紀？',['比我大','同年','比我小','不在意']]
+  ],
+  task:[
+    '用一句話稱讚你左手邊的人。',
+    '模仿一位在場朋友的口頭禪，讓大家猜是誰。',
+    '分享手機相簿裡最近一張對你有意義的照片。',
+    '用 30 秒說說你心中「理想的愛」是什麼樣子。',
+    '向在場一位朋友說一件你一直想謝謝他的事。',
+    '演出一段史上最尷尬的告白。',
+    '說出你對右手邊的人的第一印象。',
+    '和一位朋友擊掌，並說「有你真好」。',
+    '用三個 emoji 形容你現在的感情狀態，並解釋。',
+    '讓大家幫你取一個戀愛中的綽號。',
+    '分享一首最能代表你戀愛觀的歌（說歌名就好）。',
+    '給在場每個人一句戀愛建議。'
+  ],
+  chance:[
+    {t:'朋友幫你介紹對象，約會很順利。',d:40},
+    {t:'已讀不回被抓包。',d:-20},
+    {t:'聚會上被大家誇很有魅力。',d:25},
+    {t:'曖昧對象突然消失了…',d:-30},
+    {t:'和好友聊到天亮，心靈充飽電。',d:30},
+    {t:'誤會朋友了，去冷戰區反省一下。',j:1},
+    {t:'聯誼大成功！前進 3 格。',m:3},
+    {t:'幫朋友出主意挽回感情。',d:20},
+    {t:'一時衝動傳了深夜訊息。',d:-15},
+    {t:'收到一封匿名告白信。',d:35},
+    {t:'搞錯約會時間，後退 2 格。',m:-2},
+    {t:'交到一個聊得來的新朋友。',d:20}
+  ]
+}};
+
+function tilesFor(mode){
+  const d=DATA[mode]; let pi=0;
+  return LAYOUT.map((type)=>{
+    if(type==='p'){const [icon,name]=d.props[pi];const price=PRICES[pi];const t={type,icon,name,price,rent:Math.round(price*0.4/5)*5,group:Math.floor(pi/2)};pi++;return t;}
+    const m={start:['🏁','起點'],jail:['🧊','冷戰區'],gojail:['⚡','吵架了'],plaza:['💝',d.names.plaza],truth:['💬',d.names.truth],sync:['🎯',d.names.sync],chance:['🎲',d.names.chance],task:['💌',d.names.task]}[type];
+    return {type,icon:m[0],name:m[1]};
+  });
+}
+
+/* ================== 狀態 ================== */
+let S=null;      // 權威狀態（房主 / 本機）
+let V=null;      // 畫面用狀態（已隱藏未揭曉答案）
+let net={role:null};
+let myPeerId=null;
+let curtainSeat=null, curtainEv=null;
+let dispPos=[], lastDiceSeq=0, lastEvId=0;
+const PEER_PREFIX='xindong-mono-v1-';
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+
+function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,3200);}
+function sanitize(s){const c=JSON.parse(JSON.stringify(s));if(c.ev&&c.ev.k==='sync'&&!c.ev.revealed){for(const k in c.ev.ans)c.ev.ans[k]=true;}return c;}
+function mySeat(){if(net.role==='local'||!V)return null;return V.players.findIndex(p=>p.peer===myPeerId);}
+function canAct(seat){if(!V||!V.players[seat])return false;if(net.role==='local')return true;if(mySeat()===seat)return true;return net.role==='host'&&V.players[seat].online===false;}
+function partner(i){return i^1;}
+function D(){return DATA[(V||S).mode];}
+function T(){return tilesFor((V||S).mode);}
+function score(st,i){const p=st.players[i];let v=p.money;const tl=tilesFor(st.mode);for(const k in st.owners)if(st.owners[k]===i)v+=tl[k].price;return v;}
+function propCount(st,i){let n=0;for(const k in st.owners)if(st.owners[k]===i)n++;return n;}
+
+function commit(){V=sanitize(S);if(net.role==='host')broadcast();render();}
+function broadcast(){if(!net.conns)return;net.conns.forEach(c=>{if(c.open){try{c.send({t:'state',s:V})}catch(e){}}});}
+
+/* ================== 遊戲邏輯（房主 / 本機執行） ================== */
+function newLobby(mode,rounds){return {v:0,phase:'lobby',mode,maxRounds:rounds||8,players:[],owners:{},log:[],memo:[]};}
+function startGame(){
+  S.players.forEach(p=>{p.pos=0;p.money=START_MONEY;p.skip=0;});
+  Object.assign(S,{owners:{},turn:0,round:1,step:'roll',ev:null,evId:0,dice:{val:1,seq:0},log:[],memo:[],decks:{},phase:'play'});
+  dispPos=[];lastDiceSeq=0;
+  addLog(`遊戲開始！${DATA[S.mode].label}，共 ${S.maxRounds} 回合。`);
+}
+function addLog(s){S.log.unshift(s);if(S.log.length>40)S.log.length=40;}
+function draw(kind){
+  const len=DATA[S.mode][kind].length;let d=S.decks[kind];
+  if(!d||d.i>=d.order.length){d=S.decks[kind]={order:shuffle([...Array(len).keys()]),i:0};}
+  return d.order[d.i++];
+}
+function setEv(ev){ev.id=++S.evId;ev.reactions=[];S.ev=ev;S.step='event';}
+function info(icon,title,text){return {k:'info',icon,title,text,resolved:true};}
+function moveBy(seat,n){
+  const p=S.players[seat];const old=p.pos;
+  if(n>0&&old+n>=24){p.money+=PASS_BONUS;addLog(`${p.name} 經過起點，+${PASS_BONUS} 💗`);}
+  p.pos=((old+n)%24+24)%24;
+}
+function land(seat){
+  const P=S.players,p=P[seat],tl=tilesFor(S.mode)[p.pos],nm=esc(p.name),d=DATA[S.mode];
+  switch(tl.type){
+    case 'start': p.money+=30;setEv(info('🏁','剛好停在起點',`${nm} 剛好停在起點，額外 +30 💗。`));break;
+    case 'p':{
+      const o=S.owners[p.pos];
+      if(o==null){
+        if(p.money>=tl.price)setEv({k:'buy',tile:p.pos});
+        else setEv(info('💸','存款不足',`${nm} 想買下「${esc(tl.name)}」，但愛心幣不夠，下次再來！`));
+      }else if(o===seat){
+        p.money+=10;setEv(info('🏠','回到熟悉的地方',`這裡是 ${nm} 的「${esc(tl.name)}」。說說一個在類似地方發生過的回憶吧（+10 💗）。`));
+      }else if(S.mode==='couple'&&partner(seat)===o){
+        p.money+=15;P[o].money+=15;setEv(info('💞','甜蜜約會',`${nm} 來到另一半的「${esc(tl.name)}」，免過路費，兩人各 +15 💗！`));
+        addLog(`${p.name} 在另一半的${tl.name}約會，兩人各 +15`);
+      }else{
+        const r=Math.min(p.money,tl.rent);p.money-=r;P[o].money+=r;
+        setEv(info('🎟️','付過路費',`${nm} 來到 ${esc(P[o].name)} 的「${esc(tl.name)}」，付了 ${r} 💗。<br><br>導覽小費：<b>${esc(P[o].name)}</b> 可以問 ${nm} 一個想知道的問題，請誠實回答 😉`));
+        addLog(`${p.name} 付給 ${P[o].name} 過路費 ${r}`);
+      }
+      break;}
+    case 'truth': setEv({k:'truth',q:d.truth[draw('truth')],text:''});break;
+    case 'sync':{const [q,opts]=d.sync[draw('sync')];setEv({k:'sync',q,opts,ans:{},revealed:false});break;}
+    case 'task': setEv({k:'task',q:d.task[draw('task')]});break;
+    case 'chance':{
+      const c=d.chance[draw('chance')];let extra='';
+      if(c.j){p.pos=6;p.skip=1;extra='下一回合暫停。';}
+      else if(c.m){moveBy(seat,c.m);extra=`移動到「${esc(tilesFor(S.mode)[p.pos].name)}」。`;}
+      else if(c.d){p.money=Math.max(0,p.money+c.d);extra=(c.d>0?'+':'')+c.d+' 💗';}
+      setEv(info('🎲',d.names.chance,`${esc(c.t)}<br><b>${extra}</b>`));addLog(`${p.name} 抽到${d.names.chance}：${c.t}`);
+      break;}
+    case 'jail': setEv(info('🧊','路過冷戰區',`${nm} 只是路過。看到有人在這裡冷戰…記得珍惜身邊的人。`));break;
+    case 'plaza': setEv({k:'thanks',target:null});break;
+    case 'gojail': p.pos=6;p.skip=1;setEv(info('⚡','吵架了！',`${nm} 和人起了口角，被送進冷戰區，下一回合暫停。<br>想一想：最近有沒有一句「對不起」還沒說？`));addLog(`${p.name} 進了冷戰區`);break;
+  }
+}
+function advance(){
+  S.ev=null;S.step='roll';S.turn=(S.turn+1)%S.players.length;
+  if(S.turn===0){S.round++;if(S.round>S.maxRounds){S.phase='over';addLog('遊戲結束！');return;}addLog(`第 ${S.round} 回合開始`);}
+}
+const ACTIONS={
+  roll(a){if(a!==S.turn||S.step!=='roll')return false;const p=S.players[a];
+    if(p.skip>0){p.skip--;setEv(info('🧊','冷戰中',`${esc(p.name)} 還在冷戰區，這回合暫停。<br>趁這個時間想想：你最想跟誰說聲「謝謝」？`));return;}
+    const d=1+Math.floor(Math.random()*6);S.dice={val:d,seq:S.dice.seq+1};addLog(`${p.name} 擲出 ${d}`);moveBy(a,d);land(a);},
+  buy(a){const ev=S.ev;if(a!==S.turn||!ev||ev.k!=='buy'||ev.resolved)return false;const tl=tilesFor(S.mode)[ev.tile],p=S.players[a];if(p.money<tl.price)return false;
+    p.money-=tl.price;S.owners[ev.tile]=a;Object.assign(ev,info('🏡','買下了！',`「${esc(tl.name)}」現在是 ${esc(p.name)} 的回憶地點。<br>分享一下：你和誰在這種地方有過難忘的時光？`));addLog(`${p.name} 買下${tl.name}`);},
+  pass(a){const ev=S.ev;if(a!==S.turn||!ev||ev.k!=='buy'||ev.resolved)return false;Object.assign(ev,info('👋','先不買','留著下次再說。'));},
+  truthDone(a,x){const ev=S.ev,p=S.players[a];if(a!==S.turn||!ev||ev.k!=='truth'||ev.resolved)return false;
+    ev.text=String(x.text||'').trim().slice(0,300);ev.resolved=true;ev.result='回答完畢，+15 💗';p.money+=15;
+    S.memo.push({s:a,q:ev.q,a:ev.text||'（當面說了）'});addLog(`${p.name} 回答了真心話`);},
+  truthSkip(a){const ev=S.ev,p=S.players[a];if(a!==S.turn||!ev||ev.k!=='truth'||ev.resolved)return false;
+    p.money=Math.max(0,p.money-10);ev.resolved=true;ev.skipped=true;ev.result='選擇跳過，-10 💗';},
+  react(a,x){const ev=S.ev;if(!ev||!['❤️','😂','😮','👏','🥺'].includes(x.e))return false;ev.reactions.push({s:a,e:x.e});if(ev.reactions.length>24)ev.reactions.shift();},
+  syncAns(a,x){const ev=S.ev;if(!ev||ev.k!=='sync'||ev.revealed||ev.ans[a]!=null)return false;if(!(x.opt>=0&&x.opt<ev.opts.length))return false;
+    ev.ans[a]=x.opt;
+    if(Object.keys(ev.ans).length>=S.players.length){
+      ev.revealed=true;ev.resolved=true;const P=S.players,lines=[];
+      if(S.mode==='couple'){
+        for(let i=0;i+1<P.length;i+=2){
+          if(ev.ans[i]===ev.ans[i+1]){P[i].money+=25;P[i+1].money+=25;lines.push(`💞 ${P[i].name} & ${P[i+1].name} 心有靈犀，各 +25`);}
+          else lines.push(`${P[i].name} & ${P[i+1].name} 答案不同，聊聊為什麼吧`);
+        }
+        P.forEach((p,i)=>S.memo.push({s:i,q:ev.q,a:ev.opts[ev.ans[i]]}));
+      }else{
+        const c=S.turn,truth=ev.ans[c];let hit=0;
+        P.forEach((p,i)=>{if(i===c)return;if(ev.ans[i]===truth){p.money+=20;hit++;lines.push(`🎯 ${p.name} 猜中了，+20`);}});
+        P[c].money+=hit*10;lines.push(hit?`${P[c].name} 被 ${hit} 人看透，+${hit*10}`:`沒有人猜中 ${P[c].name}！說說為什麼選這個？`);
+        S.memo.push({s:c,q:ev.q,a:ev.opts[truth]});
+      }
+      ev.result=lines.map(esc).join('<br>');addLog(`${D_label()}揭曉：${ev.q}`);
+    }},
+  taskOk(a){const ev=S.ev;if(!ev||ev.k!=='task'||ev.resolved)return false;if(net.role!=='local'&&a===S.turn)return false;
+    const p=S.players[S.turn];p.money+=20;ev.resolved=true;ev.result=`${esc(p.name)} 完成任務，+20 💗`;S.memo.push({s:S.turn,q:'任務：'+ev.q,a:'完成 ✔'});addLog(`${p.name} 完成任務`);},
+  taskSkip(a){const ev=S.ev;if(a!==S.turn||!ev||ev.k!=='task'||ev.resolved)return false;ev.resolved=true;ev.result='跳過了這個任務';},
+  thanksPick(a,x){const ev=S.ev;if(a!==S.turn||!ev||ev.k!=='thanks'||ev.resolved)return false;if(x.t===a||!S.players[x.t])return false;ev.target=x.t;},
+  thanksDone(a,x){const ev=S.ev;if(a!==S.turn||!ev||ev.k!=='thanks'||ev.target==null||ev.resolved)return false;
+    const P=S.players;P[a].money+=15;P[ev.target].money+=15;ev.text=String(x.text||'').trim().slice(0,300);ev.resolved=true;
+    ev.result=`${esc(P[a].name)} 和 ${esc(P[ev.target].name)} 各 +15 💗`;
+    S.memo.push({s:ev.target,q:`${P[a].name} 對你說的感謝`,a:ev.text||'（當面說了）'});addLog(`${P[a].name} 向 ${P[ev.target].name} 表達感謝`);},
+  next(a){if(a!==S.turn||S.step!=='event'||!S.ev||!S.ev.resolved)return false;advance();}
+};
+function D_label(){return DATA[S.mode].names.sync;}
+
+function handleAct(a,from){
+  if(!S||S.phase!=='play')return;
+  const actor=(a.as!=null)?a.as:(from==null?S.turn:from);
+  if(!S.players[actor])return;
+  if(from!=null&&actor!==from){
+    const hostSeat=S.players.findIndex(p=>p.peer===myPeerId);
+    if(!(from===hostSeat&&S.players[actor].online===false))return;
+  }
+  const fn=ACTIONS[a.type];if(!fn)return;
+  if(fn(actor,a)!==false){S.v++;commit();}
+}
+function doAct(a){
+  if(net.role==='client'){if(net.conn&&net.conn.open)net.conn.send({t:'act',a});else toast('尚未連線到房主');}
+  else handleAct(a,net.role==='local'?null:mySeat());
+}
+
+/* ================== 連線（PeerJS） ================== */
+function makeCode(){const c='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<4;i++)s+=c[Math.floor(Math.random()*c.length)];return s;}
+function needPeer(){if(!window.Peer){toast('連線元件載入失敗，請確認網路，或改用「同一台裝置」模式');return false;}return true;}
+function setNet(text){const c=$('#netChip');c.hidden=!text;c.textContent=text||'';}
+
+function hostGame(name,mode){
+  if(!needPeer())return;
+  const code=makeCode();setNet('建立房間中…');
+  const peer=new Peer(PEER_PREFIX+code);
+  net={role:'host',peer,code,conns:new Map()};
+  peer.on('open',id=>{myPeerId=id;S=newLobby(mode,8);S.players.push({name,peer:id,online:true});setNet('🟢 已連線');commit();});
+  peer.on('connection',conn=>{
+    conn.on('open',()=>{net.conns.set(conn.peer,conn);});
+    conn.on('data',d=>onHostData(conn,d));
+    conn.on('close',()=>{net.conns.delete(conn.peer);if(!S)return;const i=S.players.findIndex(p=>p.peer===conn.peer);if(i<0)return;
+      if(S.phase==='lobby')S.players.splice(i,1);else{S.players[i].online=false;addLog(`${S.players[i].name} 離線了（房主可代為操作）`);}commit();});
+  });
+  peer.on('error',e=>{if(e.type==='unavailable-id'&&!S){peer.destroy();hostGame(name,mode);}else toast('連線錯誤：'+e.type);});
+  peer.on('disconnected',()=>{setNet('🟠 重新連線中…');try{peer.reconnect();}catch(e){}});
+}
+function onHostData(conn,d){
+  if(!S||!d)return;
+  if(d.t==='join'){
+    const name=String(d.name||'').trim().slice(0,12)||'玩家';
+    let p=S.players.find(p=>p.peer===conn.peer);
+    if(!p&&S.phase==='lobby'&&S.players.length<4){p={name,peer:conn.peer,online:true};S.players.push(p);}
+    else if(!p){p=S.players.find(q=>q.online===false&&q.name===name);if(p){p.peer=conn.peer;p.online=true;addLog(`${name} 重新連線`);}}
+    if(!p){try{conn.send({t:'full'})}catch(e){}return;}
+    p.online=true;commit();
+  }else if(d.t==='act'){
+    const seat=S.players.findIndex(p=>p.peer===conn.peer);if(seat<0)return;handleAct(d.a||{},seat);
+  }
+}
+function joinGame(name,code){
+  if(!needPeer())return;
+  setNet('連線中…');
+  const peer=new Peer();net={role:'client',peer,code};
+  peer.on('open',id=>{
+    myPeerId=id;const conn=peer.connect(PEER_PREFIX+code,{reliable:true});net.conn=conn;
+    conn.on('open',()=>{conn.send({t:'join',name});setNet('🟢 已連線');});
+    conn.on('data',d=>{if(!d)return;if(d.t==='state'){V=d.s;render();}else if(d.t==='full'){toast('房間已滿，或遊戲已經開始（重新加入請用原本的暱稱）');}});
+    conn.on('close',()=>{setNet('🔴 與房主斷線');toast('與房主的連線中斷，可重新整理後用同一個暱稱再加入');});
+  });
+  peer.on('error',e=>{setNet('');toast(e.type==='peer-unavailable'?'找不到這個房間，請確認代碼':'連線錯誤：'+e.type);});
+}
+
+/* ================== 畫面 ================== */
+let builtMode=null,tileEls=[],tokenEls=[];
+function buildBoard(mode){
+  const b=$('#board');b.innerHTML='';tileEls=[];tokenEls=[];
+  const tl=tilesFor(mode);
+  tl.forEach((t,i)=>{
+    let r,c;
+    if(i<=6){r=7;c=7-i;}else if(i<=12){c=1;r=7-(i-6);}else if(i<=18){r=1;c=1+(i-12);}else{c=7;r=1+(i-18);}
+    const el=document.createElement('div');
+    el.className='tile'+([0,6,12,18].includes(i)?' corner':'')+(t.type!=='p'?' t-'+t.type:'');
+    el.style.gridRow=r;el.style.gridColumn=c;
+    if(t.type==='p')el.style.borderTopColor=GROUP[t.group];
+    el.title=t.type==='p'?`${t.name}｜售價 ${t.price}｜過路費 ${t.rent}`:t.name;
+    b.appendChild(el);tileEls.push(el);
+  });
+  const ctr=document.createElement('div');ctr.className='center';ctr.innerHTML=`<div class="logo">心動<span>大富翁</span></div><div class="sub" id="cSub"></div><div class="dice" id="dice">⚀</div><div class="rinfo" id="cRound"></div><div class="rinfo" id="cTurn"></div>`;
+  b.appendChild(ctr);builtMode=mode;
+}
+function renderBoard(){
+  if(builtMode!==V.mode)buildBoard(V.mode);
+  const tl=tilesFor(V.mode);
+  tl.forEach((t,i)=>{
+    const el=tileEls[i];const o=V.owners[i];
+    el.classList.toggle('owned',o!=null);if(o!=null)el.style.setProperty('--oc',COLORS[o]);
+    el.innerHTML=`<span class="ti">${t.icon}</span><span class="tn">${esc(t.name)}</span>${t.type==='p'?`<span class="tp">${t.price}</span>`:''}${o!=null?'<span class="own"></span>':''}`;
+  });
+  $('#cSub').textContent=DATA[V.mode].label;
+  $('#cRound').textContent=`第 ${Math.min(V.round,V.maxRounds)} / ${V.maxRounds} 回合`;
+  const cp=V.players[V.turn];$('#cTurn').innerHTML=cp?`輪到 <b style="color:${COLORS[V.turn]}">${esc(cp.name)}</b>`:'';
+  // tokens
+  const b=$('#board');
+  while(tokenEls.length<V.players.length){const t=document.createElement('div');t.className='token';b.appendChild(t);tokenEls.push(t);}
+  while(tokenEls.length>V.players.length){tokenEls.pop().remove();}
+  V.players.forEach((p,i)=>{const t=tokenEls[i];t.style.background=COLORS[i];t.textContent=[...p.name][0]||'?';t.classList.toggle('cur',i===V.turn&&V.phase==='play');if(dispPos[i]==null)dispPos[i]=p.pos;});
+  positionTokens();
+  // dice
+  if(V.dice&&V.dice.seq!==lastDiceSeq){
+    const first=lastDiceSeq===0&&V.dice.seq>1;lastDiceSeq=V.dice.seq;const dEl=$('#dice');const faces='⚀⚁⚂⚃⚄⚅';
+    if(first){dEl.textContent=faces[V.dice.val-1];}
+    else{dEl.classList.add('rolling');let n=0;const iv=setInterval(()=>{dEl.textContent=faces[Math.floor(Math.random()*6)];if(++n>7){clearInterval(iv);dEl.classList.remove('rolling');dEl.textContent=faces[V.dice.val-1];}},70);}
+  }
+}
+function positionTokens(){
+  if(!V||!tileEls.length)return;
+  const offs=[[-1,-1],[1,-1],[-1,1],[1,1]];
+  V.players.forEach((p,i)=>{
+    const el=tileEls[dispPos[i]??p.pos],t=tokenEls[i];if(!el||!t)return;
+    const w=el.offsetWidth,size=Math.max(14,w*0.36);
+    t.style.width=t.style.height=size+'px';t.style.fontSize=(size*0.5)+'px';
+    t.style.left=(el.offsetLeft+w/2+offs[i][0]*w*0.22-size/2)+'px';
+    t.style.top=(el.offsetTop+el.offsetHeight/2+offs[i][1]*el.offsetHeight*0.2-size/2+4)+'px';
+  });
+}
+setInterval(()=>{
+  if(!V||V.phase==='lobby'||!tileEls.length)return;let moved=false;
+  V.players.forEach((p,i)=>{
+    if(dispPos[i]==null){dispPos[i]=p.pos;moved=true;return;}
+    if(dispPos[i]!==p.pos){const diff=(p.pos-dispPos[i]+24)%24;
+      if(diff>=1&&diff<=6)dispPos[i]=(dispPos[i]+1)%24;else if(diff>=21)dispPos[i]=(dispPos[i]+23)%24;else dispPos[i]=p.pos;moved=true;}
+  });
+  if(moved)positionTokens();
+},170);
+addEventListener('resize',positionTokens);
+
+function renderPlayers(){
+  const P=V.players,me=mySeat();let h='';
+  if(V.mode==='couple'&&P.length===4){h+=`<div class="teams"><div>第一對 <b>${score(V,0)+score(V,1)}</b></div><div>第二對 <b>${score(V,2)+score(V,3)}</b></div></div>`;}
+  P.forEach((p,i)=>{
+    h+=`<div class="pl ${i===V.turn?'cur':''}" style="--pc:${COLORS[i]}"><span class="dot">${esc([...p.name][0]||'?')}</span>
+      <div class="pinfo"><div class="pn">${esc(p.name)}${i===me?' <small>（你）</small>':''}${V.mode==='couple'?`<span class="tag">${i<2?'第一對':'第二對'}</span>`:''}</div>
+      <div class="ps">${p.skip>0?'🧊 冷戰中・':''}${p.online===false?'⚠️ 離線・':''}地點 ${propCount(V,i)} 處・總資產 ${score(V,i)}</div></div>
+      <div class="money">${p.money}<small> 💗</small></div></div>`;
+  });
+  $('#players').innerHTML=h;
+}
+
+function nameOf(i){return esc(V.players[i].name);}
+function asBtn(act,seat,label,cls='',extra=''){return `<button class="btn ${cls}" data-act="${act}" data-as="${seat}" ${extra}>${label}</button>`;}
+function evHTML(){
+  const P=V.players,cur=V.turn,cp=P[cur],mine=canAct(cur),me=mySeat(),names=DATA[V.mode].names;
+  const offline=(i)=>P[i].online===false&&net.role==='host'?`（代 ${nameOf(i)} 操作）`:'';
+  if(V.step==='roll'){
+    return `<div class="ev-tag">${V.mode==='couple'?'💑':'🥂'} 第 ${V.round} 回合</div><h3>輪到 <span style="color:${COLORS[cur]}">${nameOf(cur)}</span></h3>`+
+      (cp.skip>0?`<p class="wait">還在冷戰區，這回合會暫停。</p>`:'')+
+      (mine?asBtn('roll',cur,cp.skip>0?'🧊 結束冷戰回合':'🎲 擲骰子'+offline(cur),'primary big'):`<p class="wait">等待 ${nameOf(cur)} 擲骰子…</p>`);
+  }
+  const ev=V.ev;let h='';
+  if(ev.k==='info'){h+=`<div class="icon">${ev.icon}</div><h3>${esc(ev.title)}</h3><p>${ev.text}</p>`;}
+  else if(ev.k==='buy'){
+    const t=tilesFor(V.mode)[ev.tile];
+    h+=`<div class="icon">${t.icon}</div><h3>${esc(t.name)}</h3><p>售價 <b>${t.price} 💗</b>，買下後別人停在這裡要付 <b>${t.rent} 💗</b> 過路費。${V.mode==='couple'?'要把這裡變成你的回憶地點嗎？':'要把這裡變成你的地盤嗎？'}</p>`;
+    h+=mine?`<div class="row">${asBtn('buy',cur,'買下'+offline(cur),'primary')}${asBtn('pass',cur,'先不要')}</div>`:`<p class="wait">${nameOf(cur)} 考慮中…</p>`;
+  }
+  else if(ev.k==='truth'){
+    h+=`<div class="ev-tag">💬 ${names.truth}・${nameOf(cur)}</div><h3>${esc(ev.q)}</h3>`;
+    if(!ev.resolved){
+      h+=mine?`<textarea id="evText" maxlength="300" placeholder="一邊說，一邊記下重點（會收進最後的認識筆記，可以留白）"></textarea><div class="row">${asBtn('truthDone',cur,'回答完畢 +15'+offline(cur),'primary')}${asBtn('truthSkip',cur,'跳過 −10')}</div>`
+        :`<p class="wait">${nameOf(cur)} 正在回答，用表情給點回應吧。</p>`;
+    }else{h+=ev.skipped?'':`<div class="quote">${esc(ev.text||'（當面說了）')}</div>`;}
+  }
+  else if(ev.k==='sync'){
+    const friend=V.mode==='friend';
+    h+=`<div class="ev-tag">🎯 ${names.sync}${friend?`・猜猜 ${nameOf(cur)}`:'・四人同時作答'}</div><h3>${esc(ev.q)}</h3>`;
+    h+=`<p class="wait">${friend?`${nameOf(cur)} 選自己真實的答案，其他人猜 ${nameOf(cur)} 會選哪個。`:'每個人選自己的答案，和另一半選一樣就算心有靈犀。'}</p>`;
+    if(!ev.revealed){
+      const list=P.map((p,i)=>`<div class="ans" style="--pc:${COLORS[i]}"><span class="who">${esc(p.name)}</span><span>${friend&&i!==cur?'猜測':'作答'}</span><span class="ok">${ev.ans[i]?'✅ 已作答':'⏳'}</span></div>`).join('');
+      h+=`<div class="ans-list">${list}</div>`;
+      const optsFor=(i)=>`<div class="opts">${ev.opts.map((o,k)=>`<button class="btn" data-act="syncAns" data-as="${i}" data-opt="${k}">${esc(o)}</button>`).join('')}</div>`;
+      const prompt=(i)=>friend&&i!==cur?`${nameOf(i)}，你猜 ${nameOf(cur)} 會選？`:`${nameOf(i)}，選你自己的答案：`;
+      if(net.role==='local'){
+        if(curtainEv!==ev.id){curtainEv=ev.id;curtainSeat=null;}
+        const next=P.findIndex((p,i)=>!ev.ans[i]);
+        if(next>=0){
+          if(curtainSeat===next)h+=`<div class="curtain"><b>${prompt(next)}</b>${optsFor(next)}</div>`;
+          else h+=`<div class="curtain"><div>🙈 請把裝置交給 <b style="color:${COLORS[next]}">${nameOf(next)}</b>，其他人先別看。</div>${asBtn('curtain',next,'我是 '+nameOf(next)+'，準備好了','primary')}</div>`;
+        }
+      }else{
+        P.forEach((p,i)=>{if(!ev.ans[i]&&canAct(i))h+=`<div class="curtain"><b>${prompt(i)}${offline(i)}</b>${optsFor(i)}</div>`;});
+        if(me!=null&&me>=0&&ev.ans[me])h+=`<p class="wait">你已作答，等其他人…</p>`;
+      }
+    }else{
+      h+=`<div class="ans-list">${P.map((p,i)=>`<div class="ans" style="--pc:${COLORS[i]}"><span class="who">${esc(p.name)}</span><span>${esc(ev.opts[ev.ans[i]])}</span>${friend&&i===cur?'<span class="ok">⭐ 正解</span>':''}</div>`).join('')}</div>`;
+    }
+  }
+  else if(ev.k==='task'){
+    h+=`<div class="ev-tag">💌 ${names.task}・${nameOf(cur)}</div><h3>${esc(ev.q)}</h3>`;
+    if(!ev.resolved){
+      if(net.role==='local')h+=`<div class="row">${asBtn('taskOk',cur,'大家同意，完成！ +20','primary')}${asBtn('taskSkip',cur,'跳過')}</div>`;
+      else{
+        if(me!=null&&me>=0&&me!==cur)h+=`<p class="wait">${nameOf(cur)} 完成了嗎？</p>${asBtn('taskOk',me,'✅ 通過','primary')}`;
+        if(mine)h+=`<p class="wait">完成後請其他人按「通過」。</p>${asBtn('taskSkip',cur,'跳過這個任務'+offline(cur))}`;
+      }
+    }
+  }
+  else if(ev.k==='thanks'){
+    h+=`<div class="ev-tag">💝 ${names.plaza}・${nameOf(cur)}</div>`;
+    if(ev.target==null){
+      h+=`<h3>選一位玩家，當面說一件你很感謝對方的事。</h3>`;
+      h+=mine?`<div class="row">${P.map((p,i)=>i===cur?'':`<button class="btn" data-act="thanksPick" data-as="${cur}" data-t="${i}" style="border-color:${COLORS[i]}">${esc(p.name)}</button>`).join('')}</div>`:`<p class="wait">${nameOf(cur)} 正在選擇…</p>`;
+    }else{
+      h+=`<h3>${nameOf(cur)} 想對 <span style="color:${COLORS[ev.target]}">${nameOf(ev.target)}</span> 說聲謝謝</h3>`;
+      if(!ev.resolved)h+=mine?`<textarea id="evText" maxlength="300" placeholder="可以記下你說的話，會送進對方的認識筆記（可留白）"></textarea>${asBtn('thanksDone',cur,'說完了，兩人各 +15'+offline(cur),'primary')}`:`<p class="wait">請專心聽 ${nameOf(cur)} 說…</p>`;
+      else h+=`<div class="quote">${esc(ev.text||'（當面說了）')}</div>`;
+    }
+  }
+  if(ev.result)h+=`<div class="result">${ev.result}</div>`;
+  // reactions
+  if(['truth','sync','task','thanks'].includes(ev.k)){
+    if(ev.reactions&&ev.reactions.length)h+=`<div class="rchips">${ev.reactions.map(r=>`<span class="rchip" style="color:${COLORS[r.s]}">${nameOf(r.s)} ${r.e}</span>`).join('')}</div>`;
+    if(net.role!=='local'&&me!=null&&me>=0)h+=`<div class="reacts">${['❤️','😂','😮','👏','🥺'].map(e=>`<button class="btn" data-act="react" data-as="${me}" data-e="${e}" aria-label="回應 ${e}">${e}</button>`).join('')}</div>`;
+  }
+  if(ev.resolved){h+=mine?asBtn('next',cur,'結束回合 ➜'+offline(cur),'primary big'):`<p class="wait">等待 ${nameOf(cur)} 結束回合…</p>`;}
+  return h;
+}
+function renderEv(){
+  const box=$('#ev');const ta=$('#evText');const keep=ta?{v:ta.value,f:document.activeElement===ta}:null;
+  box.innerHTML=evHTML();
+  const id=V.ev?V.ev.id:'roll'+V.turn+'-'+V.round;
+  if(id!==lastEvId){lastEvId=id;box.classList.remove('enter');if(V.ev){void box.offsetWidth;box.classList.add('enter');}}
+  const nt=$('#evText');if(nt&&keep){nt.value=keep.v;if(keep.f)nt.focus();}
+}
+function renderOver(){
+  const o=$('#over');if(V.phase!=='over'){o.hidden=true;return;}
+  o.hidden=false;const P=V.players;let rows;
+  if(V.mode==='couple'&&P.length===4){
+    rows=[[0,1],[2,3]].map(([a,b],k)=>({label:`${k?'第二對':'第一對'}：${esc(P[a].name)} & ${esc(P[b].name)}`,v:score(V,a)+score(V,b)}));
+  }else rows=P.map((p,i)=>({label:esc(p.name),v:score(V,i)}));
+  rows.sort((x,y)=>y.v-x.v);
+  const host=net.role!=='client';
+  o.innerHTML=`<div class="over-inner"><h2>🎉 遊戲結束</h2>
+    <div class="rank">${rows.map((r,i)=>`<div class="r"><span class="n">${i+1}</span><span style="flex:1">${r.label}</span><b class="money">${r.v} 💗</b></div>`).join('')}</div>
+    <h2 style="font-size:1.6em">認識筆記</h2><p class="wait" style="text-align:center">這一局裡，大家說過的真心話、選過的答案和收到的感謝。</p>
+    <div class="notes">${P.map((p,i)=>{const m=V.memo.filter(x=>x.s===i);return `<div class="note" style="--pc:${COLORS[i]}"><h3>關於 ${esc(p.name)}</h3>${m.length?`<dl>${m.map(x=>`<dt>${esc(x.q)}</dt><dd>${esc(x.a)}</dd>`).join('')}</dl>`:'<p>這局比較神秘，下次多說一點吧！</p>'}</div>`;}).join('')}</div>
+    <div class="row" style="justify-content:center"><button class="btn" id="copyNotes">複製筆記</button>${host?'<button class="btn primary" id="again">再玩一局</button>':''}<button class="btn ghost" id="closeOver">看棋盤</button></div></div>`;
+  $('#copyNotes').onclick=copyNotes;$('#closeOver').onclick=()=>o.hidden=true;
+  if(host)$('#again').onclick=()=>{if(net.role==='host'){S.phase='lobby';S.players=S.players.filter(p=>p.online!==false);}else{startGame();}dispPos=[];commit();};
+}
+function notesText(){
+  const P=V.players;let s=`心動大富翁・${DATA[V.mode].label}・認識筆記\n\n`;
+  P.forEach((p,i)=>{s+=`【關於 ${p.name}】\n`;V.memo.filter(x=>x.s===i).forEach(x=>s+=`・${x.q}\n  → ${x.a}\n`);s+='\n';});return s;
+}
+function copyText(t){
+  if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>toast('已複製'),()=>fallbackCopy(t));else fallbackCopy(t);
+}
+function fallbackCopy(t){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('已複製');}catch(e){toast('請手動複製');}ta.remove();}
+function copyNotes(){copyText(notesText());}
+
+function renderLobby(){
+  const host=net.role==='host';
+  $('#lbCode').textContent=net.code||'';
+  $('#lbStatus').textContent=host?'把代碼傳給朋友，他們在首頁選「加入房間」輸入即可。':'已加入！等待房主開始遊戲…';
+  $('#lbModes').innerHTML=['couple','friend'].map(m=>`<button class="mode ${V.mode===m?'sel':''}" data-lmode="${m}" ${host?'':'disabled'}><span class="mi">${m==='couple'?'💑':'🥂'}</span><h3>${DATA[m].label}</h3><p>${m==='couple'?'需要剛好 4 人。1、2 號一對，3、4 號一對。':'2–4 人都可以玩。'}</p></button>`).join('');
+  const sel=$('#lbRounds');sel.value=String(V.maxRounds);sel.disabled=!host;
+  let h='';const me=mySeat();
+  for(let i=0;i<4;i++){
+    if(V.mode==='couple'&&(i===0||i===2))h+=`<div class="pair-label">${i===0?'💑 第一對':'💑 第二對'}</div>`;
+    const p=V.players[i];
+    if(!p){h+=`<div class="seat empty"><span class="dot" style="width:26px;height:26px;border-radius:50%;background:${COLORS[i]};opacity:.5"></span><span class="nm">等待加入…</span></div>`;continue;}
+    h+=`<div class="seat"><span style="width:26px;height:26px;border-radius:50%;background:${COLORS[i]};display:grid;place-items:center;font-weight:700;color:#fff;flex:none">${i+1}</span><span class="nm">${esc(p.name)}${i===me?'（你）':''}${i===0?' 👑':''}</span>
+      ${host&&i>0?`<button class="btn mini" data-lup="${i}" title="往前移">↑</button><button class="btn mini" data-lkick="${i}" title="請離開">✕</button>`:''}</div>`;
+  }
+  $('#lbSeats').innerHTML=h;
+  const n=V.players.length,ok=V.mode==='couple'?n===4:n>=2;
+  const st=$('#lbStart');st.hidden=!host;st.disabled=!ok;st.textContent=ok?'開始遊戲':(V.mode==='couple'?`情侶版需要 4 人（目前 ${n} 人）`:`至少 2 人（目前 ${n} 人）`);
+}
+
+function render(){
+  const screen=!V?'home':V.phase==='lobby'?'lobby':'game';
+  $('#home').hidden=screen!=='home';$('#lobby').hidden=screen!=='lobby';$('#game').hidden=screen!=='game';
+  document.body.dataset.mode=V?V.mode:homeMode;
+  $('#roomChip').hidden=!(net.code);$('#roomCode').textContent=net.code||'';
+  $('#leaveBtn').hidden=screen==='home';
+  if(screen==='lobby')renderLobby();
+  if(screen==='game'){renderBoard();renderPlayers();renderEv();renderOver();
+    $('#log').innerHTML=V.log.map(l=>`<div>${esc(l)}</div>`).join('');}
+}
+
+/* ================== 首頁 / 大廳 互動 ================== */
+let homeMode='couple';
+document.querySelectorAll('#home .mode').forEach(b=>b.onclick=()=>{homeMode=b.dataset.mode;document.querySelectorAll('#home .mode').forEach(x=>x.classList.toggle('sel',x===b));document.body.dataset.mode=homeMode;
+  $('#localHint').textContent=homeMode==='couple'?'情侶版：1、2 號是一對，3、4 號是一對。':'朋友版：2–4 人，空白的位置不會加入。';});
+$('#myName').value=lsGet('xd-name')||'';
+const hashCode=(location.hash.match(/room-([A-Z0-9]{4})/i)||[])[1];if(hashCode)$('#joinCode').value=hashCode.toUpperCase();
+function getName(){const n=$('#myName').value.trim();if(!n){toast('先輸入你的暱稱');$('#myName').focus();return null;}lsSet('xd-name',n);return n.slice(0,12);}
+$('#hostBtn').onclick=()=>{const n=getName();if(n)hostGame(n,homeMode);};
+$('#joinBtn').onclick=()=>{const n=getName();if(!n)return;const c=$('#joinCode').value.trim().toUpperCase();if(c.length!==4){toast('請輸入 4 碼房間代碼');return;}joinGame(n,c);};
+$('#joinCode').addEventListener('keydown',e=>{if(e.key==='Enter')$('#joinBtn').click();});
+$('#localBtn').onclick=()=>{$('#localSetup').hidden=false;$('#ln0').focus();};
+$('#localStart').onclick=()=>{
+  const names=[0,1,2,3].map(i=>$('#ln'+i).value.trim().slice(0,12));
+  let ps;
+  if(homeMode==='couple'){if(names.some(n=>!n)){toast('情侶版需要填滿 4 位玩家');return;}ps=names;}
+  else{ps=names.filter(Boolean);if(ps.length<2){toast('至少需要 2 位玩家');return;}}
+  net={role:'local'};S=newLobby(homeMode,+$('#localRounds').value);S.players=ps.map(n=>({name:n,online:true}));startGame();commit();
+};
+$('#lbModes').addEventListener('click',e=>{const b=e.target.closest('[data-lmode]');if(!b||net.role!=='host')return;S.mode=b.dataset.lmode;commit();});
+$('#lbRounds').onchange=e=>{if(net.role!=='host')return;S.maxRounds=+e.target.value;commit();};
+$('#lbSeats').addEventListener('click',e=>{if(net.role!=='host')return;
+  const up=e.target.closest('[data-lup]'),k=e.target.closest('[data-lkick]');
+  if(up){const i=+up.dataset.lup;if(i>0){[S.players[i-1],S.players[i]]=[S.players[i],S.players[i-1]];commit();}}
+  if(k){const i=+k.dataset.lkick;const p=S.players[i];if(p&&p.peer!==myPeerId){const c=net.conns.get(p.peer);S.players.splice(i,1);try{c&&c.send({t:'full'});c&&c.close();}catch(err){}commit();}}
+});
+$('#lbStart').onclick=()=>{if(net.role!=='host')return;startGame();commit();};
+$('#copyInvite').onclick=()=>{
+  const link=location.protocol.startsWith('http')?`\n連結：${location.origin}${location.pathname}#room-${net.code}`:'';
+  copyText(`來玩「心動大富翁」💗\n打開遊戲網頁 → 選「加入房間」→ 輸入代碼：${net.code}${link}`);
+};
+let leaveArmed=false;
+$('#leaveBtn').onclick=()=>{if(!leaveArmed){leaveArmed=true;$('#leaveBtn').textContent='再按一次離開';setTimeout(()=>{leaveArmed=false;$('#leaveBtn').textContent='離開';},2500);return;}
+  try{net.peer&&net.peer.destroy();}catch(e){}location.hash='';location.reload();};
+
+/* 遊戲中按鈕 */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const a={type:b.dataset.act};
+  if(b.dataset.as!=null)a.as=+b.dataset.as;
+  if(b.dataset.opt!=null)a.opt=+b.dataset.opt;
+  if(b.dataset.t!=null)a.t=+b.dataset.t;
+  if(b.dataset.e)a.e=b.dataset.e;
+  const ta=$('#evText');if(ta)a.text=ta.value;
+  if(a.type==='curtain'){curtainSeat=a.as;render();return;}
+  if(a.type==='syncAns')curtainSeat=null;
+  doAct(a);
+});
+
+render();
+</script>
+</body>
+</html>
